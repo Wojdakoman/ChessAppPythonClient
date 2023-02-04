@@ -1,4 +1,8 @@
-from PyQt6.QtWidgets import QMainWindow, QPushButton, QGridLayout, QWidget
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout
+from game_controller import GameController
+
+from widgets.field import Field
+from widgets.header import Header
 
 class MainWindow(QMainWindow):
     def __init__(self, ws):
@@ -7,27 +11,52 @@ class MainWindow(QMainWindow):
         self.ws = ws;
 
         self.setWindowTitle("Chess App");
-        self.setGeometry(100, 100, 280, 80);
+        self.setGeometry(100, 100, 600, 600);
         
-        layout = QGridLayout();
+        self.generateBoard();
         
-        button = QPushButton("Ping!");
-        button.clicked.connect(ws.ping);
+    def generateBoard(self) -> None:
+        borderSize = 25;
+        fieldSize = self.getFieldSize(borderSize);
         
-        button2 = QPushButton("Login OK");
-        button2.clicked.connect(self.loginOK);
+        layout = QVBoxLayout();
+        self.drawHeaderRow(layout, borderSize, fieldSize);
         
-        button3 = QPushButton("Login BAD");
-        button3.clicked.connect(self.loginBAD);
-        
-        layout.addWidget(button, 0, 0);
-        layout.addWidget(button2, 1, 0);
-        layout.addWidget(button3, 1, 1);
+        # board
+        isOdd = True;
+        for i in range(8):
+            rowLayout = QHBoxLayout();
+            rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[i]));
+            for j in range(8):
+                rowLayout.addWidget(Field(isOdd, fieldSize), 0);
+                isOdd = not isOdd;
+            rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[i]));
+            rowLayout.addStretch();
+            layout.addLayout(rowLayout);
+            isOdd = not isOdd;
+            
+        self.drawHeaderRow(layout, borderSize, fieldSize);
+            
+        layout.addStretch();
+        layout.setContentsMargins(self.getSpacerSize(self.width(), fieldSize, borderSize), self.getSpacerSize(self.height(), fieldSize, borderSize), 0, 0);
+        layout.setSpacing(0);
         
         wid = QWidget(self);
         wid.setLayout(layout);
         
         self.setCentralWidget(wid);
+        
+    def drawHeaderRow(self, layout: QVBoxLayout, borderSize: int, fieldSize: int) -> None:
+        rowLayout = QHBoxLayout();
+        rowLayout.addWidget(Header(borderSize, borderSize, ""));
+        for i in range(8):
+            rowLayout.addWidget(Header(borderSize, fieldSize, GameController.columnHeaders[i]));
+        rowLayout.addWidget(Header(borderSize, borderSize, ""));
+        rowLayout.addStretch();
+        layout.addLayout(rowLayout);
+        
+    def resizeEvent(self, event):
+        self.generateBoard();
         
     def closeEvent(self, event):
         print("ON APP CLOSE");
@@ -48,4 +77,16 @@ class MainWindow(QMainWindow):
         
     def onLoginRepsonse(self):
         self.ws.obs.on("login", lambda v: print("login {}".format(v)));
+        
+    def getFieldSize(self, borderSize: int) -> int:
+        height = self.height();
+        width = self.width();
+        
+        if height <= width:
+            return (height - 2 * borderSize) / (GameController.boardSize + 1);
+        else:
+            return (width - 2 * borderSize) / (GameController.boardSize + 1);
+        
+    def getSpacerSize(self, value: int, fieldSize: int, borderSize: int) -> int:
+        return (value - GameController.boardSize * (fieldSize + 1) - 2 * borderSize) / 2;
         
