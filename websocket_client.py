@@ -7,17 +7,28 @@ class WebsocketClient(QtCore.QObject):
         super().__init__(parent);
         
         self.obs = Observable();
+        self.isConnected = False;
 
         self.client = QtWebSockets.QWebSocket("", QtWebSockets.QWebSocketProtocol.Version.Version13, None);
         # self.client.ignoreSslErrors();
+        self.client.connected.connect(self.on_connect);
         self.client.error.connect(self.error);
         self.client.disconnected.connect(self.on_close);
 
-        self.client.open(QUrl("wss://localhost:7263/ws"));
+        self.connect();
         self.client.pong.connect(self.onPong);
         
         self.client.textMessageReceived.connect(self.onMessage);
 
+    def connect(self) -> None:
+        if not self.isConnected:
+            self.client.open(QUrl("wss://localhost:7263/ws"));
+        
+    def on_connect(self) -> None:
+        print("Connected to WS");
+        self.isConnected = True;
+        self.obs.trigger("connected");
+        
     def do_ping(self):
         print("client: do_ping");
         self.client.ping(b"foo");
@@ -28,6 +39,7 @@ class WebsocketClient(QtCore.QObject):
     def error(self, error_code):
         print("error code: {}".format(error_code));
         print(self.client.errorString());
+        self.isConnected = False;
         self.obs.trigger("closed");
 
     def close(self):
@@ -35,9 +47,14 @@ class WebsocketClient(QtCore.QObject):
         
     def on_close(self):
         print("WS remote close");
+        self.isConnected = False;
         self.obs.trigger("closed");
         
     def send_message(self, msg):
+        if not self.isConnected:
+            self.obs.once("connected", lambda: self.send_message(msg));
+            return;
+        
         print("client: send_message: ", msg);
         self.client.sendTextMessage(msg);
         

@@ -16,6 +16,7 @@ class Websockethandler:
         self.ws.do_ping();
         
     def login(self, login, password):
+        self.ws.connect();
         self.ws.send_message("L:{} P:{}".format(login, password));
         self.action = "login";
         

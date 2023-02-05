@@ -1,9 +1,10 @@
-from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QMessageBox, QLabel, QStatusBar
 from PyQt6.QtGui import QAction
 from game_controller import GameController
 from pawn_type import PawnType
 from widgets.field import Field
 from widgets.header import Header
+from widgets.login_dialog import LoginDialog
 from widgets.pawn import Pawn
 
 class MainWindow(QMainWindow):
@@ -17,6 +18,11 @@ class MainWindow(QMainWindow):
         
         self.createMenu();
         self.generateBoard();
+        
+        self.status = QLabel();
+        self.statusBar = QStatusBar();
+        self.statusBar.addPermanentWidget(self.status, 1);
+        self.setStatusBar(self.statusBar);
         
         self.setOnlineStatus(False);
         
@@ -72,17 +78,6 @@ class MainWindow(QMainWindow):
     def on_msg(self, msg):
         print("ON MSG: {}".format(msg));
         
-    def loginOK(self):
-        self.ws.login("adam", "adam123");
-        self.onLoginRepsonse();
-        
-    def loginBAD(self):
-        self.ws.login("adam", "adam1234");
-        self.onLoginRepsonse();
-        
-    def onLoginRepsonse(self):
-        self.ws.obs.on("login", lambda v: print("login {}".format(v)));
-        
     def getFieldSize(self, borderSize: int) -> int:
         height = self.height();
         width = self.width();
@@ -105,11 +100,11 @@ class MainWindow(QMainWindow):
         self.accountMenu = self.menu.addMenu("Account");
 
         self.actionLogin = QAction('Login', self);
-        # actionLogin.triggered.connect(self.close)
+        self.actionLogin.triggered.connect(self.showLoginDialog);
         self.accountMenu.addAction(self.actionLogin);
         
         self.actionLogout = QAction('Logout', self);
-        # actionLogin.triggered.connect(self.close)
+        self.actionLogout.triggered.connect(self.logout);
         self.accountMenu.addAction(self.actionLogout);
         
     def createGameMenu(self) -> None:
@@ -136,7 +131,7 @@ class MainWindow(QMainWindow):
         
     def setOnlineStatus(self, isOnline: bool) -> None:
         if isOnline:
-            self.statusBar().showMessage("Login status: ONLINE");
+            self.status.setText("Login status: ONLINE");
             
             self.actionLogin.setDisabled(True);
             self.actionLogout.setEnabled(True);
@@ -145,7 +140,7 @@ class MainWindow(QMainWindow):
             
             self.actionChangeURL.setEnabled(True);
         else:
-            self.statusBar().showMessage("Login status: OFFLINE");
+            self.status.setText("Login status: OFFLINE");
             
             self.actionLogin.setEnabled(True);
             self.actionLogout.setDisabled(True);
@@ -153,3 +148,21 @@ class MainWindow(QMainWindow):
             self.gameMenu.setDisabled(True);
             
             self.actionChangeURL.setDisabled(True);
+            
+    def showLoginDialog(self) -> None:
+        dialog = LoginDialog(self.ws);
+        if dialog.exec():
+            self.status.setText("Logging in...");
+            self.ws.obs.once("login", self.onLoginRepsonse);
+        
+    def onLoginRepsonse(self, response: bool) -> None:
+        if response:
+            self.setOnlineStatus(True);
+            QMessageBox(QMessageBox.Icon.Information, "Login successful", "Logged in!", parent=self).show();
+        else:
+            self.setOnlineStatus(False);
+            QMessageBox(QMessageBox.Icon.Critical, "Login failed", "Couldn't log in!", parent=self).show();
+            
+    def logout(self) -> None:
+        self.ws.logout("Logout");
+        self.setOnlineStatus(False);
