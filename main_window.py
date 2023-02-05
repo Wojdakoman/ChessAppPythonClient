@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout
+from PyQt6.QtGui import QAction
 from game_controller import GameController
 from pawn_type import PawnType
-
 from widgets.field import Field
 from widgets.header import Header
 from widgets.pawn import Pawn
@@ -15,7 +15,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Chess App");
         self.setGeometry(100, 100, 600, 600);
         
+        self.createMenu();
         self.generateBoard();
+        
+        self.setOnlineStatus(False);
         
     def generateBoard(self) -> None:
         borderSize = 25;
@@ -91,4 +94,62 @@ class MainWindow(QMainWindow):
         
     def getSpacerSize(self, value: int, fieldSize: int, borderSize: int) -> int:
         return (value - GameController.boardSize * (fieldSize + 1) - 2 * borderSize) / 2;
+    
+    def createMenu(self) -> None:
+        self.menu = self.menuBar()
+        self.createAccountMenu();
+        self.createGameMenu();
+        self.createSettingMenu();
         
+    def createAccountMenu(self) -> None:
+        self.accountMenu = self.menu.addMenu("Account");
+
+        self.actionLogin = QAction('Login', self);
+        # actionLogin.triggered.connect(self.close)
+        self.accountMenu.addAction(self.actionLogin);
+        
+        self.actionLogout = QAction('Logout', self);
+        # actionLogin.triggered.connect(self.close)
+        self.accountMenu.addAction(self.actionLogout);
+        
+    def createGameMenu(self) -> None:
+        self.gameMenu = self.menu.addMenu("Game");
+
+        self.actionFindGame = QAction('Find game', self);
+        # actionLogin.triggered.connect(self.close)
+        self.gameMenu.addAction(self.actionFindGame);
+        
+        self.actionGiveUp = QAction('Give up', self);
+        # actionLogin.triggered.connect(self.close)
+        self.gameMenu.addAction(self.actionGiveUp);
+        
+        self.actionOpDetails = QAction('Opponent\'s details', self);
+        # actionLogin.triggered.connect(self.close)
+        self.gameMenu.addAction(self.actionOpDetails);
+        
+    def createSettingMenu(self) -> None:
+        self.settingMenu = self.menu.addMenu("Settings");
+
+        self.actionChangeURL = QAction('Edit Chess Web App domain', self);
+        # actionLogin.triggered.connect(self.close)
+        self.settingMenu.addAction(self.actionChangeURL);
+        
+    def setOnlineStatus(self, isOnline: bool) -> None:
+        if isOnline:
+            self.statusBar().showMessage("Login status: ONLINE");
+            
+            self.actionLogin.setDisabled(True);
+            self.actionLogout.setEnabled(True);
+            
+            self.gameMenu.setEnabled(True);
+            
+            self.actionChangeURL.setEnabled(True);
+        else:
+            self.statusBar().showMessage("Login status: OFFLINE");
+            
+            self.actionLogin.setEnabled(True);
+            self.actionLogout.setDisabled(True);
+            
+            self.gameMenu.setDisabled(True);
+            
+            self.actionChangeURL.setDisabled(True);
