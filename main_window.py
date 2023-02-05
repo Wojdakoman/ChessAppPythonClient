@@ -1,8 +1,10 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout
 from game_controller import GameController
+from pawn_type import PawnType
 
 from widgets.field import Field
 from widgets.header import Header
+from widgets.pawn import Pawn
 
 class MainWindow(QMainWindow):
     def __init__(self, ws):
@@ -28,7 +30,7 @@ class MainWindow(QMainWindow):
             rowLayout = QHBoxLayout();
             rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[i]));
             for j in range(8):
-                rowLayout.addWidget(Field(isOdd, fieldSize), 0);
+                rowLayout.addWidget(Field(isOdd, fieldSize, Pawn(isOdd, fieldSize, PawnType.KING)));
                 isOdd = not isOdd;
             rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[i]));
             rowLayout.addStretch();
