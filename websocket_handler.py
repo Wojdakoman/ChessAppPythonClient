@@ -26,14 +26,28 @@ class Websockethandler:
     def close(self):
         self.ws.close();
         
+    def findGame(self):
+        self.ws.send_message("FG");
+        self.action = "findGame";
+        
     def on_message(self, msg):
         print("on_message: {}".format(msg));
         
         if self.action == "login":
+            self.action = None;
             self.obs.trigger("login", msg == "L OK");
+        elif self.action == "findGame" and "GS: ST" in msg:
+            self.action = None;
+            self.obs.trigger("gameStart", msg);
+        elif "GBRD:" in msg:
+            self.obs.trigger("boardData", msg.replace("GBRD: ", ""));
+        elif "GPOSTOP:" in msg:
+            self.obs.trigger("startPosition", msg.replace("GPOSTOP: ", ""));
             
     def on_error(self):
         print("on_error");
         
         if self.action == "login":
             self.obs.trigger("login", False);
+        elif self.action == "findGame":
+            self.obs.trigger("gameStart", False);

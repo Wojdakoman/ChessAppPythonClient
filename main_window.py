@@ -12,6 +12,9 @@ class MainWindow(QMainWindow):
         super().__init__();
         
         self.ws = ws;
+        
+        self.isBoardTurned = False;
+        self.generateEmptyBoard();
 
         self.setWindowTitle("Chess App");
         self.setGeometry(100, 100, 600, 600);
@@ -26,6 +29,8 @@ class MainWindow(QMainWindow):
         
         self.setOnlineStatus(False);
         
+        self.ws.obs.on("startPosition", self.setStartPosition);
+        
     def generateBoard(self) -> None:
         borderSize = 25;
         fieldSize = self.getFieldSize(borderSize);
@@ -35,13 +40,16 @@ class MainWindow(QMainWindow):
         
         # board
         isOdd = True;
-        for i in range(8):
+        for i in range(GameController.boardSize):
             rowLayout = QHBoxLayout();
-            rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[i]));
-            for j in range(8):
-                rowLayout.addWidget(Field(isOdd, fieldSize, Pawn(isOdd, fieldSize, PawnType.KING)));
+            headerIdx = i;
+            if self.isBoardTurned:
+                headerIdx = GameController.boardSize - 1 - i;
+            rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[headerIdx]));
+            for j in range(GameController.boardSize):
+                rowLayout.addWidget(Field(isOdd, fieldSize, self.getFieldFigure(i, j, fieldSize)));
                 isOdd = not isOdd;
-            rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[i]));
+            rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[headerIdx]));
             rowLayout.addStretch();
             layout.addLayout(rowLayout);
             isOdd = not isOdd;
@@ -60,8 +68,11 @@ class MainWindow(QMainWindow):
     def drawHeaderRow(self, layout: QVBoxLayout, borderSize: int, fieldSize: int) -> None:
         rowLayout = QHBoxLayout();
         rowLayout.addWidget(Header(borderSize, borderSize, ""));
-        for i in range(8):
-            rowLayout.addWidget(Header(borderSize, fieldSize, GameController.columnHeaders[i]));
+        for i in range(GameController.boardSize):
+            columnIdx = i;
+            if self.isBoardTurned:
+                columnIdx = GameController.boardSize - 1 - i;
+            rowLayout.addWidget(Header(borderSize, fieldSize, GameController.columnHeaders[columnIdx]));
         rowLayout.addWidget(Header(borderSize, borderSize, ""));
         rowLayout.addStretch();
         layout.addLayout(rowLayout);
@@ -111,7 +122,7 @@ class MainWindow(QMainWindow):
         self.gameMenu = self.menu.addMenu("Game");
 
         self.actionFindGame = QAction('Find game', self);
-        # actionLogin.triggered.connect(self.close)
+        self.actionFindGame.triggered.connect(self.findGame);
         self.gameMenu.addAction(self.actionFindGame);
         
         self.actionGiveUp = QAction('Give up', self);
@@ -166,3 +177,64 @@ class MainWindow(QMainWindow):
     def logout(self) -> None:
         self.ws.logout("Logout");
         self.setOnlineStatus(False);
+
+    def findGame(self) -> None:
+        self.status.setText("Finding game...");
+        self.ws.findGame();
+        self.ws.obs.once("gameStart", self.onGameFoundRepsonse);
+    
+    def onGameFoundRepsonse(self, msg) -> None:
+        if not msg:
+            self.status.setText("Error while finding game!");
+            QMessageBox(QMessageBox.Icon.Critical, "Error", "An error occurred while searching for games!", parent=self).show();
+        else:
+            self.bd_sub = self.ws.obs.on("boardData", self.onGameData);
+            
+            self.status.setText("Login status: ONLINE - INGAME");
+            alertBoxMsg = msg.replace("GS: ST ", "");
+            QMessageBox(QMessageBox.Icon.Information, "Found game!", alertBoxMsg, parent=self).show();
+            
+            
+    def onGameData(self, data: str) -> None:
+        self.generateEmptyBoard();
+        self.readBoardData(data);
+        self.generateBoard();
+            
+    def generateEmptyBoard(self) -> None:
+        self.board_data = [None for i in range(GameController.boardSize)];
+        for i in range(GameController.boardSize):
+            self.board_data[i] = [None for j in range(GameController.boardSize)];
+            
+    def readBoardData(self, data: str) -> None:
+        list_data = data.split();
+        for i in range(len(list_data)):
+            figure_data = list_data[i].split(",");
+            type_int = int(figure_data[0]);
+            f_type = GameController.pawnTypes[abs(type_int)];
+            isWhite = type_int > 0;
+            row = int(figure_data[1]);
+            col = int(figure_data[2]);
+            if self.isBoardTurned:
+                row = GameController.boardSize - 1 - row;
+                col = GameController.boardSize - 1 - col;
+            self.board_data[row][col] = (f_type, isWhite);
+            
+    def getFieldFigure(self, row: int, col: int, fieldSize: int) -> Pawn:
+        figure_data = self.board_data[row][col];
+        if figure_data is None:
+            return None;
+        else:
+            return Pawn(figure_data[1], fieldSize, figure_data[0]);
+            
+    def debug_print_board(self) -> None:
+        print(self.board_data);
+        print();
+        print();
+        for i in range(GameController.boardSize):
+            for j in range(GameController.boardSize):
+                print(self.board_data[i][j], end=" ");
+            print();
+            
+    def setStartPosition(self, data: str) -> None:
+        self.isBoardTurned = "T" in data;
+            
