@@ -34,6 +34,9 @@ class Websockethandler:
         self.ws.send_message("GM R:{} C:{}".format(row, col));
         self.action = "possibleMoves";
         
+    def performMove(self, current_row: int, current_col: int, destination_row: int, destination_column: int):
+        self.ws.send_message("GM RO:{} CO:{} RN:{} CN:{}".format(current_row, current_col, destination_row, destination_column));
+        
     def on_message(self, msg):
         print("on_message: {}".format(msg));
         

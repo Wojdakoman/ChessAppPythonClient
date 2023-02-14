@@ -50,7 +50,9 @@ class MainWindow(QMainWindow):
             for j in range(GameController.boardSize):
                 isMovePossible = self.board_moves_data[i][j] == 1;
                 isPawnActive = self.board_moves_data[i][j] == 2;
-                rowLayout.addWidget(Field(isOdd, fieldSize, self.getFieldFigure(i, j, fieldSize), isPawnActive, isMovePossible));
+                field = Field(isOdd, fieldSize, self.getFieldFigure(i, j, fieldSize), isPawnActive, isMovePossible);
+                field.mousePressEvent = lambda e, row=i, col=j, isMovePossible=isMovePossible: self.onFieldClick(e, row, col, isMovePossible);
+                rowLayout.addWidget(field);
                 isOdd = not isOdd;
             rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[headerIdx]));
             rowLayout.addStretch();
@@ -261,7 +263,8 @@ class MainWindow(QMainWindow):
         
     def onFigClick(self, e, row: int, col: int, isWhite: bool) -> None:
         if (isWhite and self.isBoardTurned) or (not isWhite and not self.isBoardTurned):
-            return;
+            # check capture move
+            self.onFieldClick(None, row, col, self.board_moves_data[row][col] == 1);
         elif not self.isClientTurn:
             return;
         else:
@@ -284,3 +287,29 @@ class MainWindow(QMainWindow):
                 col = GameController.boardSize - 1 - col;
             self.board_moves_data[row][col] = 1; # flag possible move
         self.generateBoard();
+        
+    def onFieldClick(self, e, row: int, col: int, isMovePossible: bool) -> None:
+        if not isMovePossible or not self.isClientTurn:
+            return;
+        
+        activePawn = self.getActivePawn();
+        if activePawn is None:
+            return;
+        
+        currentRow = activePawn[0];
+        currentCol = activePawn[1];
+        
+        if self.isBoardTurned:
+            row = GameController.boardSize - 1 - row;
+            col = GameController.boardSize - 1 - col;
+            currentRow = GameController.boardSize - 1 - currentRow;
+            currentCol = GameController.boardSize - 1 - currentCol;
+        
+        self.ws.performMove(currentRow, currentCol, row, col);
+        
+    def getActivePawn(self):
+        for i in range(GameController.boardSize):
+            for j in range(GameController.boardSize):
+                if self.board_moves_data[i][j] == 2:
+                    return (i,j);
+        return None;
