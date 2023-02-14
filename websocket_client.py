@@ -41,7 +41,7 @@ class WebsocketClient(QtCore.QObject):
         print("error code: {}".format(error_code));
         print(self.client.errorString());
         self.isConnected = False;
-        self.obs.trigger("closed");
+        self.obs.trigger("error");
 
     def close(self):
         self.client.close();

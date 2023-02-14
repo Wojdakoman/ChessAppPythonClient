@@ -32,6 +32,7 @@ class MainWindow(QMainWindow):
         
         self.ws.obs.on("startPosition", self.setStartPosition);
         self.ws.obs.on("gameOver", self.onGameOver);
+        self.ws.obs.on("WSclosed", self.onWSClosed);
         
     def generateBoard(self) -> None:
         borderSize = 25;
@@ -344,3 +345,10 @@ class MainWindow(QMainWindow):
         dialog = ServerEditDialog(self.ws);
         if dialog.exec():
             self.setOnlineStatus(False);
+            
+    def onWSClosed(self) -> None:
+        QMessageBox(QMessageBox.Icon.Critical, "Connection lost", "Connection to server has been lost", parent=self).show()
+        if "INGAME" in self.status.text():
+            self.onGameOver("Connection lost");
+        self.setOnlineStatus(False);
+        

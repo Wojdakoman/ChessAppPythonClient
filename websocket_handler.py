@@ -10,7 +10,8 @@ class Websockethandler:
         
     def subscribe(self):
         self.ws.obs.on("msg", self.on_message);
-        self.ws.obs.on("closed", self.on_error);
+        self.ws.obs.on("error", self.on_error);
+        self.ws.obs.on("closed", self.on_close);
         
     def ping(self):
         self.ws.do_ping();
@@ -75,3 +76,7 @@ class Websockethandler:
             self.obs.trigger("login", False);
         elif self.action == "findGame":
             self.obs.trigger("gameStart", False);
+            
+    def on_close(self):
+        self.on_error();
+        self.obs.trigger("WSclosed");
