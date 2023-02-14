@@ -14,6 +14,7 @@ class MainWindow(QMainWindow):
         self.ws = ws;
         
         self.isBoardTurned = False;
+        self.isClientTurn = False;
         self.generateEmptyBoard();
 
         self.setWindowTitle("Chess App");
@@ -47,7 +48,9 @@ class MainWindow(QMainWindow):
                 headerIdx = GameController.boardSize - 1 - i;
             rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[headerIdx]));
             for j in range(GameController.boardSize):
-                rowLayout.addWidget(Field(isOdd, fieldSize, self.getFieldFigure(i, j, fieldSize)));
+                isMovePossible = self.board_moves_data[i][j] == 1;
+                isPawnActive = self.board_moves_data[i][j] == 2;
+                rowLayout.addWidget(Field(isOdd, fieldSize, self.getFieldFigure(i, j, fieldSize), isPawnActive, isMovePossible));
                 isOdd = not isOdd;
             rowLayout.addWidget(Header(fieldSize, borderSize, GameController.rowHeaders[headerIdx]));
             rowLayout.addStretch();
@@ -189,6 +192,7 @@ class MainWindow(QMainWindow):
             QMessageBox(QMessageBox.Icon.Critical, "Error", "An error occurred while searching for games!", parent=self).show();
         else:
             self.bd_sub = self.ws.obs.on("boardData", self.onGameData);
+            self.turn_sub = self.ws.obs.on("turnChange", self.onChangeTurn);
             
             self.status.setText("Login status: ONLINE - INGAME");
             alertBoxMsg = msg.replace("GS: ST ", "");
@@ -204,6 +208,12 @@ class MainWindow(QMainWindow):
         self.board_data = [None for i in range(GameController.boardSize)];
         for i in range(GameController.boardSize):
             self.board_data[i] = [None for j in range(GameController.boardSize)];
+        self.clearMovesData();
+            
+    def clearMovesData(self) -> None:
+        self.board_moves_data = [None for i in range(GameController.boardSize)];
+        for i in range(GameController.boardSize):
+            self.board_moves_data[i] = [None for j in range(GameController.boardSize)];
             
     def readBoardData(self, data: str) -> None:
         list_data = data.split();
@@ -224,7 +234,9 @@ class MainWindow(QMainWindow):
         if figure_data is None:
             return None;
         else:
-            return Pawn(figure_data[1], fieldSize, figure_data[0]);
+            fig = Pawn(figure_data[1], fieldSize, figure_data[0]);
+            fig.mousePressEvent = lambda e, row=row, col=col, isWhite=figure_data[1]: self.onFigClick(e, row, col, isWhite);
+            return fig;
             
     def debug_print_board(self) -> None:
         print(self.board_data);
@@ -237,4 +249,38 @@ class MainWindow(QMainWindow):
             
     def setStartPosition(self, data: str) -> None:
         self.isBoardTurned = "T" in data;
+        
+    def onChangeTurn(self, data: str) -> None:
+        self.isClientTurn = "T" in data;
+        
+        if self.isClientTurn:
+            statusMsg = "YOUR TURN";
+        else:
+            statusMsg = "waiting for opponent's move";
+        self.status.setText("Login status: ONLINE - INGAME: {}".format(statusMsg));
+        
+    def onFigClick(self, e, row: int, col: int, isWhite: bool) -> None:
+        if (isWhite and self.isBoardTurned) or (not isWhite and not self.isBoardTurned):
+            return;
+        elif not self.isClientTurn:
+            return;
+        else:
+            self.clearMovesData();
+            self.board_moves_data[row][col] = 2; # flag active figure
+            if self.isBoardTurned:
+                row = GameController.boardSize - 1 - row;
+                col = GameController.boardSize - 1 - col;
+            self.ws.getPossibleMoves(row, col);
+            self.ws.obs.once("possibleMoves", self.onPossibleMoves);
             
+    def onPossibleMoves(self, data: str) -> None:
+        list_data = data.split();
+        for i in range(len(list_data)):
+            figure_data = list_data[i].split(",");
+            row = int(figure_data[0]);
+            col = int(figure_data[1]);
+            if self.isBoardTurned:
+                row = GameController.boardSize - 1 - row;
+                col = GameController.boardSize - 1 - col;
+            self.board_moves_data[row][col] = 1; # flag possible move
+        self.generateBoard();

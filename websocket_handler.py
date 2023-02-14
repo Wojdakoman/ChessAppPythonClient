@@ -30,6 +30,10 @@ class Websockethandler:
         self.ws.send_message("FG");
         self.action = "findGame";
         
+    def getPossibleMoves(self, row: int, col: int):
+        self.ws.send_message("GM R:{} C:{}".format(row, col));
+        self.action = "possibleMoves";
+        
     def on_message(self, msg):
         print("on_message: {}".format(msg));
         
@@ -39,10 +43,15 @@ class Websockethandler:
         elif self.action == "findGame" and "GS: ST" in msg:
             self.action = None;
             self.obs.trigger("gameStart", msg);
+        elif self.action == "possibleMoves" and "GMOV:" in msg:
+            self.action = None;
+            self.obs.trigger("possibleMoves", msg.replace("GMOV: ", ""));
         elif "GBRD:" in msg:
             self.obs.trigger("boardData", msg.replace("GBRD: ", ""));
         elif "GPOSTOP:" in msg:
             self.obs.trigger("startPosition", msg.replace("GPOSTOP: ", ""));
+        elif "GTRN:" in msg:
+            self.obs.trigger("turnChange", msg.replace("GTRN: ", ""));
             
     def on_error(self):
         print("on_error");
