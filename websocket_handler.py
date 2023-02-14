@@ -37,6 +37,13 @@ class Websockethandler:
     def performMove(self, current_row: int, current_col: int, destination_row: int, destination_column: int):
         self.ws.send_message("GM RO:{} CO:{} RN:{} CN:{}".format(current_row, current_col, destination_row, destination_column));
         
+    def giveUp(self):
+        self.ws.send_message("GM GO");
+        
+    def getOpponentsDetails(self):
+        self.ws.send_message("GM ED");
+        self.action = "opponentsDetails";
+        
     def on_message(self, msg):
         print("on_message: {}".format(msg));
         
@@ -49,12 +56,17 @@ class Websockethandler:
         elif self.action == "possibleMoves" and "GMOV:" in msg:
             self.action = None;
             self.obs.trigger("possibleMoves", msg.replace("GMOV: ", ""));
+        elif self.action == "opponentsDetails" and "GMES:" in msg:
+            self.action = None;
+            self.obs.trigger("opponentsDetails", msg.replace("GMES:", "").strip());
         elif "GBRD:" in msg:
             self.obs.trigger("boardData", msg.replace("GBRD: ", ""));
         elif "GPOSTOP:" in msg:
             self.obs.trigger("startPosition", msg.replace("GPOSTOP: ", ""));
         elif "GTRN:" in msg:
             self.obs.trigger("turnChange", msg.replace("GTRN: ", ""));
+        elif "GS: GO" in msg:
+            self.obs.trigger("gameOver", msg.replace("GS: GO ", ""));
             
     def on_error(self):
         print("on_error");

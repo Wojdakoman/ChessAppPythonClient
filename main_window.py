@@ -31,6 +31,7 @@ class MainWindow(QMainWindow):
         self.setOnlineStatus(False);
         
         self.ws.obs.on("startPosition", self.setStartPosition);
+        self.ws.obs.on("gameOver", self.onGameOver);
         
     def generateBoard(self) -> None:
         borderSize = 25;
@@ -131,11 +132,11 @@ class MainWindow(QMainWindow):
         self.gameMenu.addAction(self.actionFindGame);
         
         self.actionGiveUp = QAction('Give up', self);
-        # actionLogin.triggered.connect(self.close)
+        self.actionGiveUp.triggered.connect(self.giveUp);
         self.gameMenu.addAction(self.actionGiveUp);
         
         self.actionOpDetails = QAction('Opponent\'s details', self);
-        # actionLogin.triggered.connect(self.close)
+        self.actionOpDetails.triggered.connect(self.getOpponentsDetails);
         self.gameMenu.addAction(self.actionOpDetails);
         
     def createSettingMenu(self) -> None:
@@ -313,3 +314,18 @@ class MainWindow(QMainWindow):
                 if self.board_moves_data[i][j] == 2:
                     return (i,j);
         return None;
+    
+    def onGameOver(self, msg: str) -> None:
+        self.ws.obs.off("boardData");
+        self.ws.obs.off("turnChange");
+        QMessageBox(QMessageBox.Icon.Information, "Game over!", msg, parent=self).show();
+        self.generateEmptyBoard();
+        self.generateBoard();
+        self.setOnlineStatus(True);
+        
+    def giveUp(self) -> None:
+        self.ws.giveUp();
+        
+    def getOpponentsDetails(self) -> None:
+        self.ws.getOpponentsDetails();
+        self.ws.obs.once("opponentsDetails", lambda msg: QMessageBox(QMessageBox.Icon.Information, "Opponent's details", msg, parent=self).show());
