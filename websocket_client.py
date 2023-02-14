@@ -1,6 +1,7 @@
 from PyQt6 import QtCore, QtWebSockets
 from PyQt6.QtCore import QUrl
 from observable import Observable
+from server_url_helper import ServerURLHelper
 
 class WebsocketClient(QtCore.QObject):
     def __init__(self, parent):
@@ -22,7 +23,7 @@ class WebsocketClient(QtCore.QObject):
 
     def connect(self) -> None:
         if not self.isConnected:
-            self.client.open(QUrl("wss://localhost:7263/ws"));
+            self.client.open(QUrl(ServerURLHelper.getServerURL()));
         
     def on_connect(self) -> None:
         print("Connected to WS");

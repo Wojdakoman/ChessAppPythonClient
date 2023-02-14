@@ -1,11 +1,11 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QMessageBox, QLabel, QStatusBar
 from PyQt6.QtGui import QAction
 from game_controller import GameController
-from pawn_type import PawnType
 from widgets.field import Field
 from widgets.header import Header
 from widgets.login_dialog import LoginDialog
 from widgets.pawn import Pawn
+from widgets.server_edit_dialog import ServerEditDialog
 
 class MainWindow(QMainWindow):
     def __init__(self, ws):
@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
         self.settingMenu = self.menu.addMenu("Settings");
 
         self.actionChangeURL = QAction('Edit Chess Web App domain', self);
-        # actionLogin.triggered.connect(self.close)
+        self.actionChangeURL.triggered.connect(self.editUrl);
         self.settingMenu.addAction(self.actionChangeURL);
         
     def setOnlineStatus(self, isOnline: bool) -> None:
@@ -339,3 +339,8 @@ class MainWindow(QMainWindow):
     def getOpponentsDetails(self) -> None:
         self.ws.getOpponentsDetails();
         self.ws.obs.once("opponentsDetails", lambda msg: QMessageBox(QMessageBox.Icon.Information, "Opponent's details", msg, parent=self).show());
+        
+    def editUrl(self) -> None:
+        dialog = ServerEditDialog(self.ws);
+        if dialog.exec():
+            self.setOnlineStatus(False);
