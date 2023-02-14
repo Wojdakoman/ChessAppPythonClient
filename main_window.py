@@ -166,6 +166,11 @@ class MainWindow(QMainWindow):
             
             self.actionChangeURL.setDisabled(True);
             
+        self.actionFindGame.setEnabled(True);
+        self.actionGiveUp.setDisabled(True);
+        self.actionOpDetails.setDisabled(True);
+        self.actionChangeURL.setEnabled(True);
+            
     def showLoginDialog(self) -> None:
         dialog = LoginDialog(self.ws);
         if dialog.exec():
@@ -194,6 +199,11 @@ class MainWindow(QMainWindow):
             self.status.setText("Error while finding game!");
             QMessageBox(QMessageBox.Icon.Critical, "Error", "An error occurred while searching for games!", parent=self).show();
         else:
+            self.actionFindGame.setDisabled(True);
+            self.actionGiveUp.setEnabled(True);
+            self.actionOpDetails.setEnabled(True);
+            self.actionChangeURL.setDisabled(True);
+            
             self.bd_sub = self.ws.obs.on("boardData", self.onGameData);
             self.turn_sub = self.ws.obs.on("turnChange", self.onChangeTurn);
             
