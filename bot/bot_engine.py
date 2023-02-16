@@ -1,6 +1,6 @@
 import chess.polyglot
 
-from eval_func import EvalFunction
+from bot.eval_func import EvalFunction
 
 class BotEngine:
     depth = 5;
@@ -10,7 +10,7 @@ class BotEngine:
     
     def getMove(self) -> chess.Move:
         try:
-            move = chess.polyglot.MemoryMappedReader("books/human.bin").weighted_choice(self.board).move;
+            move = chess.polyglot.MemoryMappedReader("bot/books/human.bin").weighted_choice(self.board).move;
             return move;
         except:
             bestMove = chess.Move.null();

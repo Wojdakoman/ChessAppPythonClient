@@ -1,6 +1,6 @@
 import chess
 
-from figure_tables import FigureTables
+from bot.figure_tables import FigureTables
 
 class EvalFunction:
     @staticmethod
