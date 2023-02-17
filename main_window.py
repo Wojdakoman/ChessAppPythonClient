@@ -1,5 +1,9 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QMessageBox, QLabel, QStatusBar
 from PyQt6.QtGui import QAction
+from PyQt6.QtCore import QTimer
+import random
+from bot.board_translate import BoardTranslate
+from bot.bot_engine import BotEngine
 from game_controller import GameController
 from widgets.field import Field
 from widgets.header import Header
@@ -16,6 +20,7 @@ class MainWindow(QMainWindow):
 
         self.isBoardTurned = False;
         self.isClientTurn = False;
+        self.playingVSBot = False;
         self.generateEmptyBoard();
 
         self.setWindowTitle("Chess App");
@@ -141,6 +146,10 @@ class MainWindow(QMainWindow):
         self.actionOpDetails.triggered.connect(self.getOpponentsDetails);
         self.gameMenu.addAction(self.actionOpDetails);
         
+        self.actionBotPlay = QAction('Play vs BOT', self);
+        self.actionBotPlay.triggered.connect(self.playVSBot);
+        self.gameMenu.addAction(self.actionBotPlay);
+        
     def createSettingMenu(self) -> None:
         self.settingMenu = self.menu.addMenu("Settings");
 
@@ -155,7 +164,10 @@ class MainWindow(QMainWindow):
             self.actionLogin.setDisabled(True);
             self.actionLogout.setEnabled(True);
             
-            self.gameMenu.setEnabled(True);
+            self.actionFindGame.setEnabled(True);
+            self.actionGiveUp.setDisabled(True);
+            self.actionOpDetails.setDisabled(True);
+            self.actionBotPlay.setEnabled(True);
             
             self.actionChangeURL.setEnabled(True);
         else:
@@ -164,14 +176,12 @@ class MainWindow(QMainWindow):
             self.actionLogin.setEnabled(True);
             self.actionLogout.setDisabled(True);
             
-            self.gameMenu.setDisabled(True);
+            self.actionFindGame.setDisabled(True);
+            self.actionGiveUp.setDisabled(True);
+            self.actionOpDetails.setDisabled(True);
+            self.actionBotPlay.setEnabled(True);
             
-            self.actionChangeURL.setDisabled(True);
-            
-        self.actionFindGame.setEnabled(True);
-        self.actionGiveUp.setDisabled(True);
-        self.actionOpDetails.setDisabled(True);
-        self.actionChangeURL.setEnabled(True);
+            self.actionChangeURL.setEnabled(True);
             
     def showLoginDialog(self) -> None:
         dialog = LoginDialog(self.ws);
@@ -208,6 +218,7 @@ class MainWindow(QMainWindow):
             self.actionGiveUp.setEnabled(True);
             self.actionOpDetails.setEnabled(True);
             self.actionChangeURL.setDisabled(True);
+            self.actionBotPlay.setDisabled(True);
             
             self.bd_sub = self.ws.obs.on("boardData", self.onGameData);
             self.turn_sub = self.ws.obs.on("turnChange", self.onChangeTurn);
@@ -274,8 +285,8 @@ class MainWindow(QMainWindow):
         if self.isClientTurn:
             statusMsg = "YOUR TURN";
         else:
-            statusMsg = "waiting for opponent's move";
-        self.status.setText("Login status: ONLINE as {} - INGAME: {}".format(self.lastusername, statusMsg));
+            statusMsg = "waiting for {} move".format("bot's" if self.playingVSBot else "opponent's");
+        self.status.setText("{}: {}".format("Login status: OFFLINE - INGAME vs BOT" if self.playingVSBot else "Login status: ONLINE as {} - INGAME".format(self.lastusername), statusMsg));
         
     def onFigClick(self, e, row: int, col: int, isWhite: bool) -> None:
         if (isWhite and self.isBoardTurned) or (not isWhite and not self.isBoardTurned):
@@ -289,8 +300,11 @@ class MainWindow(QMainWindow):
             if self.isBoardTurned:
                 row = GameController.boardSize - 1 - row;
                 col = GameController.boardSize - 1 - col;
-            self.ws.getPossibleMoves(row, col);
-            self.ws.obs.once("possibleMoves", self.onPossibleMoves);
+            if self.playingVSBot:
+                self.onPossibleMoves(BoardTranslate.getPossibleMoves(self.botEngine.board, row, col));
+            else:
+                self.ws.getPossibleMoves(row, col);
+                self.ws.obs.once("possibleMoves", self.onPossibleMoves);
             
     def onPossibleMoves(self, data: str) -> None:
         list_data = data.split();
@@ -298,6 +312,7 @@ class MainWindow(QMainWindow):
             figure_data = list_data[i].split(",");
             row = int(figure_data[0]);
             col = int(figure_data[1]);
+            #if (self.isBoardTurned and not self.playingVSBot) or (self.playingVSBot and not self.isBoardTurned):
             if self.isBoardTurned:
                 row = GameController.boardSize - 1 - row;
                 col = GameController.boardSize - 1 - col;
@@ -320,8 +335,11 @@ class MainWindow(QMainWindow):
             col = GameController.boardSize - 1 - col;
             currentRow = GameController.boardSize - 1 - currentRow;
             currentCol = GameController.boardSize - 1 - currentCol;
-        
-        self.ws.performMove(currentRow, currentCol, row, col);
+            
+        if self.playingVSBot:
+            self.performVSBotMove(currentRow, currentCol, row, col);
+        else:
+            self.ws.performMove(currentRow, currentCol, row, col);
         
     def getActivePawn(self):
         for i in range(GameController.boardSize):
@@ -349,8 +367,57 @@ class MainWindow(QMainWindow):
             self.setOnlineStatus(False);
             
     def onWSClosed(self) -> None:
+        if self.playingVSBot:
+            return;
         QMessageBox(QMessageBox.Icon.Critical, "Connection lost", "Connection to server has been lost", parent=self).show()
         if "INGAME" in self.status.text():
             self.onGameOver("Connection lost");
         self.setOnlineStatus(False);
         
+    def playVSBot(self) -> None:
+        print('Playing VS BOT');
+        self.ws.close();
+        self.playingVSBot = True;
+        self.botEngine = BotEngine();
+                
+        if random.random() < 0.5:
+            # bot is black
+            self.setStartPosition("F");
+            self.onChangeTurn("T");
+            self.onGameData(BoardTranslate.translateBotBoard(self.botEngine.board));
+        else:
+            # bot is white
+            self.setStartPosition("T");
+            self.onChangeTurn("F");
+            self.onGameData(BoardTranslate.translateBotBoard(self.botEngine.board));
+            QTimer.singleShot(random.uniform(0.5, 2.9) * 1000, self.performBotMove);
+            #self.performBotMove();
+        
+    def performBotMove(self) -> None:
+        mov = self.botEngine.getMove();
+        print("BOT: {}".format(mov));
+        self.botEngine.board.push(mov);
+        
+        self.onGameData(BoardTranslate.translateBotBoard(self.botEngine.board));
+        self.checkBotGameEnded();
+        self.onChangeTurn("T");
+        
+    def performVSBotMove(self, current_row: int, current_col: int, destination_row: int, destination_column: int) -> None:
+        from_square = BoardTranslate.getMoveName(current_row, current_col);
+        to_square = BoardTranslate.getMoveName(destination_row, destination_column);
+        print(from_square);
+        print(to_square);
+        
+        self.botEngine.board.push_san("{}{}".format(from_square, to_square));
+        self.onGameData(BoardTranslate.translateBotBoard(self.botEngine.board));
+        self.checkBotGameEnded();
+        self.onChangeTurn("F");
+        
+        QTimer.singleShot(random.uniform(0.5, 2.9) * 1000, self.performBotMove);
+        #self.performBotMove();
+        
+    def checkBotGameEnded(self) -> None:
+        if self.botEngine.board.is_game_over(claim_draw=True):
+            self.onGameOver("You have won!" if self.isClientTurn else "BOT has won!");
+            self.playingVSBot = False;
+            self.setOnlineStatus(False);
