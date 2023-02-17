@@ -12,7 +12,8 @@ class MainWindow(QMainWindow):
         super().__init__();
         
         self.ws = ws;
-        
+        self.lastusername = "";
+
         self.isBoardTurned = False;
         self.isClientTurn = False;
         self.generateEmptyBoard();
@@ -149,7 +150,7 @@ class MainWindow(QMainWindow):
         
     def setOnlineStatus(self, isOnline: bool) -> None:
         if isOnline:
-            self.status.setText("Login status: ONLINE");
+            self.status.setText("Login status: ONLINE as {}".format(self.lastusername));
             
             self.actionLogin.setDisabled(True);
             self.actionLogout.setEnabled(True);
@@ -175,6 +176,7 @@ class MainWindow(QMainWindow):
     def showLoginDialog(self) -> None:
         dialog = LoginDialog(self.ws);
         if dialog.exec():
+            self.lastusername = dialog.loginBox.text();
             self.status.setText("Logging in...");
             self.ws.obs.once("login", self.onLoginRepsonse);
         
@@ -191,6 +193,8 @@ class MainWindow(QMainWindow):
         self.setOnlineStatus(False);
 
     def findGame(self) -> None:
+        self.generateEmptyBoard();
+        self.generateBoard();
         self.status.setText("Finding game...");
         self.ws.findGame();
         self.ws.obs.once("gameStart", self.onGameFoundRepsonse);
@@ -271,7 +275,7 @@ class MainWindow(QMainWindow):
             statusMsg = "YOUR TURN";
         else:
             statusMsg = "waiting for opponent's move";
-        self.status.setText("Login status: ONLINE - INGAME: {}".format(statusMsg));
+        self.status.setText("Login status: ONLINE as {} - INGAME: {}".format(self.lastusername, statusMsg));
         
     def onFigClick(self, e, row: int, col: int, isWhite: bool) -> None:
         if (isWhite and self.isBoardTurned) or (not isWhite and not self.isBoardTurned):
@@ -330,8 +334,6 @@ class MainWindow(QMainWindow):
         self.ws.obs.off("boardData");
         self.ws.obs.off("turnChange");
         QMessageBox(QMessageBox.Icon.Information, "Game over!", msg, parent=self).show();
-        self.generateEmptyBoard();
-        self.generateBoard();
         self.setOnlineStatus(True);
         
     def giveUp(self) -> None:

@@ -2,6 +2,7 @@ from PyQt6 import QtCore, QtWebSockets
 from PyQt6.QtCore import QUrl
 from observable import Observable
 from server_url_helper import ServerURLHelper
+from PyQt6.QtNetwork import QSslError
 
 class WebsocketClient(QtCore.QObject):
     def __init__(self, parent):
@@ -11,7 +12,7 @@ class WebsocketClient(QtCore.QObject):
         self.isConnected = False;
 
         self.client = QtWebSockets.QWebSocket("", QtWebSockets.QWebSocketProtocol.Version.Version13, None);
-        # self.client.ignoreSslErrors();
+        self.client.sslErrors.connect(self.ssl_error);
         self.client.connected.connect(self.on_connect);
         self.client.error.connect(self.error);
         self.client.disconnected.connect(self.on_close);
@@ -23,7 +24,8 @@ class WebsocketClient(QtCore.QObject):
 
     def connect(self) -> None:
         if not self.isConnected:
-            self.client.open(QUrl(ServerURLHelper.getServerURL()));
+            url = QUrl(ServerURLHelper.getServerURL());
+            self.client.open(url);
         
     def on_connect(self) -> None:
         print("Connected to WS");
@@ -36,6 +38,10 @@ class WebsocketClient(QtCore.QObject):
 
     def onPong(self, elapsedTime, payload):
         print("onPong - time: {} ; payload: {}".format(elapsedTime, payload));
+
+    def ssl_error(self, errorList):
+        self.client.ignoreSslErrors();
+        print("SSL error ignored");
 
     def error(self, error_code):
         print("error code: {}".format(error_code));
