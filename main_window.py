@@ -397,6 +397,7 @@ class MainWindow(QMainWindow):
         self.botEngine.board.push(mov);
         
         self.onGameData(BoardTranslate.translateBotBoard(self.botEngine.board));
+        self.checkBotGameEnded();
         self.onChangeTurn("T");
         
     def performVSBotMove(self, current_row: int, current_col: int, destination_row: int, destination_column: int) -> None:
@@ -407,7 +408,14 @@ class MainWindow(QMainWindow):
         
         self.botEngine.board.push_san("{}{}".format(from_square, to_square));
         self.onGameData(BoardTranslate.translateBotBoard(self.botEngine.board));
+        self.checkBotGameEnded();
         self.onChangeTurn("F");
         
         QTimer.singleShot(random.uniform(0.5, 2.9) * 1000, self.performBotMove);
         #self.performBotMove();
+        
+    def checkBotGameEnded(self) -> None:
+        if self.botEngine.board.is_game_over(claim_draw=True):
+            self.onGameOver("You have won!" if self.isClientTurn else "BOT has won!");
+            self.playingVSBot = False;
+            self.setOnlineStatus(False);
