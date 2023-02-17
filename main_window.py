@@ -387,8 +387,9 @@ class MainWindow(QMainWindow):
             # bot is white
             self.setStartPosition("T");
             self.onChangeTurn("F");
-            # QTimer.singleShot(random.uniform(0.5, 2.9), self.performBotMove);
-            self.performBotMove();
+            self.onGameData(BoardTranslate.translateBotBoard(self.botEngine.board));
+            QTimer.singleShot(random.uniform(0.5, 2.9) * 1000, self.performBotMove);
+            #self.performBotMove();
         
     def performBotMove(self) -> None:
         mov = self.botEngine.getMove();
@@ -408,5 +409,5 @@ class MainWindow(QMainWindow):
         self.onGameData(BoardTranslate.translateBotBoard(self.botEngine.board));
         self.onChangeTurn("F");
         
-        #QTimer.singleShot(random.uniform(0.5, 2.9), self.performBotMove);
-        self.performBotMove();
+        QTimer.singleShot(random.uniform(0.5, 2.9) * 1000, self.performBotMove);
+        #self.performBotMove();

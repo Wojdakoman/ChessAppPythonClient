@@ -31,14 +31,14 @@ class BoardTranslate:
     
     @staticmethod
     def getPossibleMoves(board: chess.Board, i: int, j: int) -> str:
-        print(board);
+        # print(board);
         name = BoardTranslate.getMoveName(i, j);
         result = "";
-        print(name);
-        for i in list(board.pseudo_legal_moves):
+        # print(name);
+        for i in list(board.legal_moves):
             st = "{}".format(i);
             if name in st:
-                print(st);
+                # print(st);
                 result += "{},{} ".format(GameController.boardSize - 1 - GameController.rowHeaders.index(st[3].upper()), GameController.columnHeaders.index(st[2].upper()));
         return result;
     
