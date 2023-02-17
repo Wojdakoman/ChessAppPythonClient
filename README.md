@@ -4,6 +4,7 @@
 * Python 3.8+
 * PyQt6
 * [observable](https://github.com/timofurrer/observable)
+* [python-chess](https://github.com/niklasf/python-chess)
 
 ## Installation ##
 Install all required Python libs  
